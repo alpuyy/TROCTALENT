@@ -15,21 +15,31 @@ export default function Navbar() {
   useEffect(() => {
     // 1. Cek sesi aktif saat pertama kali load
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
+      try {
+        const { data } = await supabase.auth.getSession();
+        setUser(data?.session?.user ?? null);
+      } catch {
+        setUser(null);
+      }
     };
 
     checkUser();
 
     // 2. Pasang listener perubahan auth (login / logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null);
-      }
-    );
+    let subscription: { unsubscribe: () => void } | null = null;
+    try {
+      const authListener = supabase.auth.onAuthStateChange(
+        (_event, session) => {
+          setUser(session?.user ?? null);
+        }
+      );
+      subscription = authListener.data.subscription;
+    } catch {
+      // Supabase server offline
+    }
 
     return () => {
-      subscription.unsubscribe();
+      if (subscription) subscription.unsubscribe();
     };
   }, []);
 

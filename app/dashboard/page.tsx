@@ -19,37 +19,42 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchUserData = async () => {
-      // 1. Cek sesi login user
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      try {
+        // 1. Cek sesi login user
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-      if (!session) {
-        router.push("/login");
-        return;
+        if (!session) {
+          router.push("/login");
+          return;
+        }
+
+        setUserEmail(session.user.email || "");
+
+        // 2. Ambil data profil dari tabel 'profiles' atau fallback ke metadata user
+        const { data } = await supabase
+          .from("profiles")
+          .select("username, kampus, area_kos")
+          .eq("id", session.user.id)
+          .single();
+
+        if (data) {
+          setProfile(data);
+        } else {
+          // Fallback dari user_metadata Supabase
+          const meta = session.user.user_metadata;
+          setProfile({
+            username: meta?.username || "Anak Kos",
+            kampus: meta?.kampus || "Belum diatur",
+            area_kos: meta?.area_kos || "Belum diatur",
+          });
+        }
+      } catch (err: unknown) {
+        console.warn("Koneksi ke Supabase gagal:", err);
+      } finally {
+        setLoading(false);
       }
-
-      setUserEmail(session.user.email || "");
-
-      // 2. Ambil data profil dari tabel 'profiles' atau fallback ke metadata user
-      const { data } = await supabase
-        .from("profiles")
-        .select("username, kampus, area_kos")
-        .eq("id", session.user.id)
-        .single();
-
-      if (data) {
-        setProfile(data);
-      } else {
-        // Fallback dari user_metadata Supabase
-        const meta = session.user.user_metadata;
-        setProfile({
-          username: meta?.username || "Anak Kos",
-          kampus: meta?.kampus || "Belum diatur",
-          area_kos: meta?.area_kos || "Belum diatur",
-        });
-      }
-      setLoading(false);
     };
 
     fetchUserData();
